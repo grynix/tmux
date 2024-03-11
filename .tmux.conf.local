@@ -427,6 +427,8 @@ set -g @plugin 'christoomey/vim-tmux-navigator'
 
 set -g @plugin 'sainnhe/tmux-fzf'
 setw -g mode-keys vi
+
+set -g @plugin 'catppuccin/tmux'
 # -- custom variables ----------------------------------------------------------
 
 # to define a custom #{foo} variable, define a POSIX shell function between the
