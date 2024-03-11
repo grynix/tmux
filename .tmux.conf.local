@@ -429,6 +429,10 @@ set -g @plugin 'sainnhe/tmux-fzf'
 setw -g mode-keys vi
 
 set -g @plugin 'catppuccin/tmux'
+
+bind | split-window -h
+bind X kill-pane
+
 # -- custom variables ----------------------------------------------------------
 
 # to define a custom #{foo} variable, define a POSIX shell function between the
