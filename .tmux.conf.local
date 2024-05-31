@@ -483,4 +483,6 @@ bind X kill-pane
 #
 # "$@"
 # # /!\ do not remove the previous line
- 
+
+set -g monitor-activity off
+set -g monitor-silence off
