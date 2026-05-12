@@ -269,9 +269,8 @@ set -g mouse on
 #   - uninstall plugins: <prefix> + Alt + u
 #   - update plugins:    <prefix> + u
 #
-# /!\ do NOT add: set -g @plugin 'tmux-plugins/tpm'
-# /!\ do NOT add: run '~/.tmux/plugins/tpm/tpm'
-
+# /!\\ do NOT add: set -g @plugin 'tmux-plugins/tpm'
+# /!\\ do NOT add: run '~/.tmux/plugins/tpm/tpm'
 set -g @plugin 'christoomey/vim-tmux-navigator'
 
 set -g @plugin 'sainnhe/tmux-fzf'
@@ -313,4 +312,4 @@ bind X kill-pane
 # # /!\ do not remove the previous line
 
 set -g monitor-activity off
-set -g monitor-silence off
+set -g monitor-silence 0

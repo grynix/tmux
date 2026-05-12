@@ -5,9 +5,11 @@
 # What it does:
 #   1. Clones gpakosz/.tmux (oh-my-tmux) into ~/.tmux if missing.
 #   2. Symlinks ~/.tmux.conf -> ~/.tmux/.tmux.conf (the upstream main config).
-#   3. Symlinks ~/.tmux.conf.local -> <this repo>/tmux.conf.local.
-#   4. Installs TPM (tmux plugin manager) into ~/.tmux/plugins/tpm if missing.
-#   5. Backs up any pre-existing real files (not symlinks) before replacing.
+#   3. Symlinks <this repo>/tmux.conf -> ~/.tmux/.tmux.conf (XDG entry point).
+#   4. Symlinks ~/.tmux.conf.local -> <this repo>/tmux.conf.local.
+#   5. Installs TPM (tmux plugin manager) into <this repo>/plugins/tpm if missing.
+#   6. Runs TPM headless install to fetch all plugins declared in tmux.conf.local.
+#   7. Backs up any pre-existing real files (not symlinks) before replacing.
 
 set -euo pipefail
 
@@ -21,7 +23,7 @@ done
 REPO_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 OHMYTMUX_DIR="${HOME}/.tmux"
-TPM_DIR="${HOME}/.tmux/plugins/tpm"
+TPM_DIR="${REPO_DIR}/plugins/tpm"
 TS="$(date +%Y%m%d-%H%M%S)"
 
 info()  { printf '\033[1;34m[*]\033[0m %s\n' "$*"; }
@@ -63,11 +65,12 @@ link() {
   ok "$linkpath -> $target"
 }
 
-# 2 & 3. Symlinks.
+# 2, 3 & 4. Symlinks.
 link "$OHMYTMUX_DIR/.tmux.conf"   "$HOME/.tmux.conf"
+link "$OHMYTMUX_DIR/.tmux.conf"   "$REPO_DIR/tmux.conf"
 link "$REPO_DIR/tmux.conf.local"  "$HOME/.tmux.conf.local"
 
-# 4. TPM.
+# 5. TPM.
 if [ ! -d "$TPM_DIR/.git" ]; then
   info "Installing TPM into $TPM_DIR"
   mkdir -p "$(dirname "$TPM_DIR")"
@@ -77,14 +80,21 @@ else
   ok "TPM already present."
 fi
 
+# 6. Install plugins headlessly via TPM.
+info "Installing tmux plugins via TPM..."
+if "$TPM_DIR/bin/install_plugins" 2>&1 | sed 's/^/    /'; then
+  ok "Plugins installed."
+else
+  warn "One or more plugins failed to install — check output above."
+fi
+
 # Friendly closing notes.
 echo
 ok "Install complete."
 echo
 echo "Next steps:"
-echo "  • Start tmux:                 tmux"
-echo "  • Inside tmux, install plugins: <prefix> + I  (prefix is C-b by default)"
-echo "  • To reload config:           <prefix> + r"
+echo "  • Start (or reload) tmux:   tmux new-session  /  tmux source ~/.tmux.conf"
+echo "  • To reload config:         <prefix> + r"
 echo
 case "$(uname -s)" in
   Darwin)
