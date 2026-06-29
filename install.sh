@@ -8,8 +8,11 @@
 #   3. Symlinks <this repo>/tmux.conf -> ~/.tmux/.tmux.conf (XDG entry point).
 #   4. Symlinks ~/.tmux.conf.local -> <this repo>/tmux.conf.local.
 #   5. Installs TPM (tmux plugin manager) into <this repo>/plugins/tpm if missing.
-#   6. Runs TPM headless install to fetch all plugins declared in tmux.conf.local.
-#   7. Backs up any pre-existing real files (not symlinks) before replacing.
+#   6. Symlinks ~/.tmux/plugins -> <this repo>/plugins so oh-my-tmux finds plugins
+#      in the right place (it always resolves TMUX_PLUGIN_MANAGER_PATH relative to ~/.tmux/).
+#   7. Clones each plugin directly into <this repo>/plugins/ (TPM headless install
+#      has no tmux session context and installs to the wrong path).
+#   8. Backs up any pre-existing real files (not symlinks) before replacing.
 
 set -euo pipefail
 
@@ -80,13 +83,48 @@ else
   ok "TPM already present."
 fi
 
-# 6. Install plugins headlessly via TPM.
-info "Installing tmux plugins via TPM..."
-if "$TPM_DIR/bin/install_plugins" 2>&1 | sed 's/^/    /'; then
-  ok "Plugins installed."
+# 6. Symlink ~/.tmux/plugins -> <repo>/plugins.
+# oh-my-tmux's _apply_plugins always resolves TMUX_PLUGIN_MANAGER_PATH as
+# "$(dirname $TMUX_CONF)/plugins" = "~/.tmux/plugins". Symlinking it here
+# ensures it points at our repo's plugins directory where plugins actually live.
+OHMYTMUX_PLUGINS="${OHMYTMUX_DIR}/plugins"
+REPO_PLUGINS="${REPO_DIR}/plugins"
+if [ -L "$OHMYTMUX_PLUGINS" ]; then
+  if [ "$(readlink "$OHMYTMUX_PLUGINS")" = "$REPO_PLUGINS" ]; then
+    ok "$OHMYTMUX_PLUGINS -> $REPO_PLUGINS (already correct)"
+  else
+    info "Replacing symlink $OHMYTMUX_PLUGINS (was -> $(readlink "$OHMYTMUX_PLUGINS"))"
+    rm "$OHMYTMUX_PLUGINS"
+    ln -s "$REPO_PLUGINS" "$OHMYTMUX_PLUGINS"
+    ok "$OHMYTMUX_PLUGINS -> $REPO_PLUGINS"
+  fi
+elif [ -e "$OHMYTMUX_PLUGINS" ]; then
+  warn "Backing up $OHMYTMUX_PLUGINS -> ${OHMYTMUX_PLUGINS}.bak.${TS}"
+  mv "$OHMYTMUX_PLUGINS" "${OHMYTMUX_PLUGINS}.bak.${TS}"
+  ln -s "$REPO_PLUGINS" "$OHMYTMUX_PLUGINS"
+  ok "$OHMYTMUX_PLUGINS -> $REPO_PLUGINS"
 else
-  warn "One or more plugins failed to install — check output above."
+  ln -s "$REPO_PLUGINS" "$OHMYTMUX_PLUGINS"
+  ok "$OHMYTMUX_PLUGINS -> $REPO_PLUGINS"
 fi
+
+# 7. Clone plugins directly.
+# TPM headless install runs without a live tmux session and installs to the
+# wrong path. We clone each plugin explicitly instead. Idempotent.
+clone_plugin() {
+  local url="$1" dest="$2"
+  if [ ! -d "$dest/.git" ]; then
+    info "Cloning $(basename "$dest")..."
+    git clone --depth 1 "$url" "$dest"
+    ok "$(basename "$dest") installed."
+  else
+    ok "$(basename "$dest") already present."
+  fi
+}
+
+clone_plugin "https://github.com/christoomey/vim-tmux-navigator" "$REPO_PLUGINS/vim-tmux-navigator"
+clone_plugin "https://github.com/sainnhe/tmux-fzf"               "$REPO_PLUGINS/tmux-fzf"
+clone_plugin "https://github.com/catppuccin/tmux"                 "$REPO_PLUGINS/tmux"
 
 # Friendly closing notes.
 echo
